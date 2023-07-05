@@ -1,27 +1,28 @@
-<<<<<<< HEAD
 const express = require("express");
 const app = express();
 const jwt = require("jsonwebtoken");
-const { Admin } = require("mongodb");
+// const { Admin } = require("mongodb");
 const mongoose = require("mongoose");
+const cors = require('cors');
 
 app.use(express.json());
+app.use(cors())
 
 // let ADMINS = [];
 // let USERS = [];
 // let COURSES = [];
 
-const secretKey = s3c38S6ing;
+const secretKey = 's3c38S6ing';
 
 function jwtAuthentication(req, res, next) {
   const authHeader = req.headers.authorization;
   if (authHeader) {
     const token = authHeader.split(" ")[1];
-    jwt.verify(token, secretString, (err, user) => {
+    jwt.verify(token, secretKey, (err, user) => {
       if (err) {
         res.sendStatus(403);
       }
-      res.user = user;
+      req.user = user;
       next();
     });
   } else {
@@ -72,11 +73,11 @@ app.post("/admin/signup", async (req, res) => {
       password,
     };
     const newAdmin = new Admin(obj);
-    newAdmin.save();
+    await newAdmin.save();
     const token = jwt.sign({ username, role: "Admin" }, secretKey, {
       expiresIn: "1h",
     });
-    res.send(200).json({ message: "New user created", token });
+    res.status(200).json({ message: "New user created", token });
   }
 });
 
@@ -96,7 +97,7 @@ app.post("/admin/login", async (req, res) => {
 
 // logic to create a course
 app.post("/admin/courses", jwtAuthentication, async (req, res) => {
-  const newCourse = req.body;
+  const newCourse = new Course(req.body);
   await newCourse.save();
   res
     .status(200)
@@ -126,9 +127,9 @@ app.put("/admin/courses/:courseId", jwtAuthentication, async (req, res) => {
 });
 
 // logic to get all courses
-app.get("/admin/courses", jwtAuthentication, async, (req, res) => {
+app.get("/admin/courses", jwtAuthentication, async (req, res) => {
   try {
-    const course = Course.find();
+    const course = await Course.find();
     res.status(200).json({ courses: course });
   } catch (error) {
     res.status(500).json(error);
@@ -137,82 +138,76 @@ app.get("/admin/courses", jwtAuthentication, async, (req, res) => {
 
 // User routes
 // logic to sign up user
-app.post("/users/signup", jwtAuthentication, async(req, res) => {
+app.post("/users/signup", async(req, res) => {
   const {username, password} = req.body;
+  const user = await User.findOne({username});
+  if(user){
+    res.status(403).send("user already exists");
+  }else{
+    const obj = {
+      username, password
+    }
+    const newUser = new User({username, password});
+    await newUser.save();
+    const token = jwt.sign({username, role: 'User'}, secretKey,{expiresIn: '1h'});
+    res.status(201).json({message: 'new user created succesfully', token});
+  }
 
   
 });
 
-app.post("/users/login", (req, res) => {
-  // logic to log in user
+// logic to log in user
+app.post("/users/login", async (req, res) => {
+  const {username, password} = req.headers;
+
+  if(username && password) {
+    const user = await User.findOne({username , password});
+    if(user){
+      const token = jwt.sign({username, role:'User'},secretKey, {expiresIn: '1h'});
+      res.status(200).json({message: 'user logged in succssfuly', token});
+    }
+  }else{
+    res.status(403).json({message: 'enter username and password'});
+  }
 });
 
-app.get("/users/courses", (req, res) => {
-  // logic to list all courses
+
+// logic to list all courses
+app.get("/users/courses", jwtAuthentication,async(req, res) => {
+  const courses = await Course.find({});
+  res.json({courses});
 });
 
-app.post("/users/courses/:courseId", (req, res) => {
-  // logic to purchase a course
+// logic to purchase a course
+app.post("/users/courses/:courseId", jwtAuthentication, async(req, res) => {
+  const course = await Course.findById(req.params.courseId);
+  console.log(course)
+  if(course){
+    const user = await User.findOne({username: req.user.username});
+    if(user){
+      user.purchasedCourses.push(course);
+      await user.save();
+      res.status(200).json({message:'course purchased succesfully'});
+  }else{
+    res.status(403).send('no user found');
+  }
+  }else{
+    res.status(404).send('no course found')
+  }
 });
 
-app.get("/users/purchasedCourses", (req, res) => {
-=======
-const express = require('express');
-const app = express();
+// logic to view purchased courses
+app.get("/users/purchasedCourses",jwtAuthentication,async (req, res) => {
+  const user = await User.findOne({username: req.user.username, password: req.user.password}).populate('purchasedCourses');
 
-app.use(express.json());
-
-let ADMINS = [];
-let USERS = [];
-let COURSES = [];
-
-// Admin routes
-app.post('/admin/signup', (req, res) => {
-  // logic to sign up admin
-});
-
-app.post('/admin/login', (req, res) => {
-  // logic to log in admin
-});
-
-app.post('/admin/courses', (req, res) => {
-  // logic to create a course
-});
-
-app.put('/admin/courses/:courseId', (req, res) => {
-  // logic to edit a course
-});
-
-app.get('/admin/courses', (req, res) => {
-  // logic to get all courses
-});
-
-// User routes
-app.post('/users/signup', (req, res) => {
-  // logic to sign up user
-});
-
-app.post('/users/login', (req, res) => {
-  // logic to log in user
-});
-
-app.get('/users/courses', (req, res) => {
-  // logic to list all courses
-});
-
-app.post('/users/courses/:courseId', (req, res) => {
-  // logic to purchase a course
-});
-
-app.get('/users/purchasedCourses', (req, res) => {
->>>>>>> source/main
-  // logic to view purchased courses
+  if(user){
+    const purchasedCourses = user.purchasedCourses;
+    res.status(200).json({purchasedCourses});
+  }else{
+    res.status(404).send('no user found')
+  }
 });
 
 app.listen(3000, () => {
-<<<<<<< HEAD
   console.log("Server is listening on port 3000");
-=======
-  console.log('Server is listening on port 3000');
->>>>>>> source/main
 });
