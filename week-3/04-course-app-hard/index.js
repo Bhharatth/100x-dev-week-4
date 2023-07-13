@@ -104,6 +104,12 @@ app.post("/admin/courses", jwtAuthentication, async (req, res) => {
     .json({ message: "New course created succesfully", course: newCourse });
 });
 
+app.get("/admin/course/:courseId",jwtAuthentication,async (req, res)=> {
+  const courseId = req.params.courseId;
+  const course = await Course.findById(courseId);
+  res.json({course});
+})
+
 // logic to edit a course
 app.put("/admin/courses/:courseId", jwtAuthentication, async (req, res) => {
   try {
@@ -137,6 +143,12 @@ app.get("/admin/courses", jwtAuthentication, async (req, res) => {
 });
 
 // User routes
+
+app.get('/users/me',jwtAuthentication, async(req, res)=> {
+  const user = await User.findOne({username});
+  res.status(200).json(user);
+});
+
 // logic to sign up user
 app.post("/users/signup", async(req, res) => {
   const {username, password} = req.body;
@@ -158,7 +170,7 @@ app.post("/users/signup", async(req, res) => {
 
 // logic to log in user
 app.post("/users/login", async (req, res) => {
-  const {username, password} = req.headers;
+  const {username, password} = req.body;
 
   if(username && password) {
     const user = await User.findOne({username , password});
@@ -175,7 +187,7 @@ app.post("/users/login", async (req, res) => {
 // logic to list all courses
 app.get("/users/courses", jwtAuthentication,async(req, res) => {
   const courses = await Course.find({});
-  res.json({courses});
+  res.json({'courses': courses});
 });
 
 // logic to purchase a course
