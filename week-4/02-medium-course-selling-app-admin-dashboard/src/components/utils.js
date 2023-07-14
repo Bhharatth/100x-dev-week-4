@@ -11,9 +11,14 @@ export const useTokenStorage = (storageKey, fallbackToken) => {
     JSON.parse(localStorage.getItem(storageKey)) ?? fallbackToken
   );
 
+  const deleteToken = () => {
+    localStorage.removeItem(storageKey);
+    setToken(fallbackToken);
+  };
+
   React.useEffect(() => {
     localStorage.setItem(storageKey, JSON.stringify(token));
   }, [token, storageKey]);
 
-  return [token, setToken];
+  return [token, setToken, deleteToken];
 };
